@@ -1,0 +1,20 @@
+[project]
+name = "class-2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gensim>=4.3.3",
+    "ipykernel>=6.30.1",
+    "langchain>=0.3.27",
+    "langchain-community>=0.3.21",
+    "langchain-openai>=0.3.33",
+    "matplotlib>=3.10.6",
+    "openai>=1.109.1",
+    "pip>=25.2",
+    "pydantic==2.*",
+    "scikit-learn>=1.7.2",
+    "tenacity>=9.1.2",
+    "tiktoken>=0.11.0",
+]

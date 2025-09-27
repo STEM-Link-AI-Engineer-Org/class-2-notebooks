@@ -1,0 +1,2 @@
+Thought 1:
+How might you represent the meaning of a sentence as a vector, given word vectors?
