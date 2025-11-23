@@ -7,9 +7,14 @@ encouraging guidance token-by-token via a callback.
 
 import os
 from typing import Any
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.callbacks import BaseCallbackHandler
+from dotenv import load_dotenv
+load_dotenv() 
 
-
-class PrintTokens:
+class PrintTokens(BaseCallbackHandler):
     """Minimal callback-like interface for printing tokens.
 
     Implement compatibility with LangChain callback protocol if desired.
@@ -35,12 +40,21 @@ class MicroCoach:
         self.user_prompt = "Goal: {goal}\nTime: {time_available}\nReturn a 3-step plan."
 
         # TODO: Build prompts and LLMs (streaming and non-streaming)
-        self.llm_streaming = None
-        self.llm_plain = None
-        self.stream_prompt = None
-        self.plain_prompt = None
-        self.stream_chain = None
-        self.plain_chain = None
+        self.llm_streaming = ChatOpenAI(model="gpt-4o-mini", temperature=0.4, streaming=True, callbacks=[PrintTokens()])
+        self.llm_plain = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
+
+        self.stream_prompt = ChatPromptTemplate.from_messages([
+            ("system", self.system_prompt),
+            ("user", self.user_prompt),
+        ])
+
+        self.plain_prompt = ChatPromptTemplate.from_messages([
+            ("system", self.system_prompt),
+            ("user", self.user_prompt),
+        ])
+
+        self.stream_chain = self.stream_prompt | self.llm_streaming | StrOutputParser()
+        self.plain_chain = self.plain_prompt | self.llm_plain | StrOutputParser()
 
     def coach(self, goal: str, time_available: str, stream: bool = False) -> str:
         """Return guidance using streaming or non-streaming path.
@@ -49,7 +63,19 @@ class MicroCoach:
         - If `stream=True`, attach a token printer callback and stream output.
         - Else, return a compact non-streamed plan string.
         """
-        raise NotImplementedError("Implement streaming vs non-streaming coaching.")
+        inputs = {
+            "goal": goal,
+            "time_available": time_available
+        }
+        
+        if stream:
+            # Use streaming chain
+            result = self.stream_chain.invoke(inputs)
+            return result
+        else:
+            # Use non-streaming chain
+            result = self.plain_chain.invoke(inputs)
+            return result
 
 
 def _demo():
@@ -69,3 +95,21 @@ def _demo():
 
 if __name__ == "__main__":
     _demo()
+
+
+# ============================================================================
+# KEY LEARNINGS - Assignment 8: On-Demand Streaming (No new concepts)
+# ============================================================================
+
+# --- NEW LEARNING (only what's different) ---
+
+# 1. ON-DEMAND STREAMING - User Controls Streaming Behavior
+#    - User chooses streaming at runtime with `stream` parameter
+#    - Implementation: Two chains (streaming + non-streaming), conditional selection
+#    - Use case: Give users choice - fast batch processing vs real-time feedback
+
+# 2. CONDITIONAL CHAIN SELECTION
+#    - if stream: use stream_chain
+#    - else: use plain_chain
+#    - Both chains have same logic, different LLM configs
+#    - Pattern: Build multiple variations in __init__, select at runtime
