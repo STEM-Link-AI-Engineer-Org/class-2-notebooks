@@ -12,6 +12,8 @@ Instructions: Fill the TODOs only. Do not change class/method signatures.
 import os
 from dataclasses import dataclass
 from typing import Optional
+from dotenv import load_dotenv
+load_dotenv()
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -30,16 +32,13 @@ class EmergencyDispatcher:
 
     def __init__(self, model: str = "gpt-4o-mini", temperature: float = 0.2):
         # TODO: Initialize an LLM for stable, reproducible outputs
-        # self.llm = ChatOpenAI(model=model, temperature=temperature)
-        self.llm = None
+        self.llm = ChatOpenAI(model=model, temperature=temperature)
 
         # TODO: Build the ChatPromptTemplate from prompt strings in `_build_prompt`
-        # self.prompt = self._build_prompt()
-        self.prompt = None
+        self.prompt = self._build_prompt()
 
         # TODO: Create a chain that maps {transcript} -> "URGENCY | SUMMARY | ACTION"
-        # self.chain = self.prompt | self.llm | StrOutputParser()
-        self.chain = None
+        self.chain = self.prompt | self.llm | StrOutputParser()
 
     def _build_prompt(self) -> Optional[ChatPromptTemplate]:
         """
@@ -63,11 +62,10 @@ class EmergencyDispatcher:
 
         # TODO: create ChatPromptTemplate with above prompts
         # Example construction (fill in):
-        # return ChatPromptTemplate.from_messages([
-        #     ("system", system_prompt),
-        #     ("user", user_prompt),
-        # ])
-        return None
+        return ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("user", user_prompt),
+        ])
 
     def triage_call(self, transcript: str) -> DispatchResult:
         """
@@ -80,7 +78,12 @@ class EmergencyDispatcher:
         """
         # TODO: invoke the chain with {"transcript": transcript}
         # and parse the result into DispatchResult
-        raise NotImplementedError("Build chain, invoke, and parse triage output.")
+        result = self.chain.invoke({"transcript": transcript})
+        parts = result.split("|")
+        urgency = parts[0].strip()
+        summary = parts[1].strip()
+        action = parts[2].strip()
+        return DispatchResult(urgency=urgency, summary=summary, action=action)
 
 
 def _demo_cases() -> None:
@@ -107,3 +110,68 @@ if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
         print("⚠️ Set OPENAI_API_KEY before running.")
     _demo_cases()
+
+
+# ============================================================================
+# KEY LEARNINGS - Assignment 1: LangChain Basics
+# ============================================================================
+
+# --- PYTHON CONCEPTS ---
+
+# 1. DATACLASSES
+#    - @dataclass decorator automatically creates __init__, __repr__, etc.
+#    - Simple way to create classes that mainly store data
+#    - Example: @dataclass defines DispatchResult with urgency, summary, action fields
+#    - Access fields with dot notation: result.urgency, result.summary
+
+# 2. TYPE HINTS
+#    - model: str = indicates parameter type and default value
+#    - -> DispatchResult shows return type of function
+#    - Optional[ChatPromptTemplate] means can return ChatPromptTemplate or None
+
+# 3. STRING METHODS
+#    - .split("|") → splits string at pipe character into list
+#    - .strip() → removes leading/trailing whitespace
+
+# 4. F-STRINGS
+#    - f"text {variable}" → inserts variable into string
+#    - Example: f"Urgency: {result.urgency}" → "Urgency: EMERGENCY"
+#    - Cleaner than string concatenation with +
+
+# --- LANGCHAIN AI CONCEPTS ---
+
+# 1. LLM INITIALIZATION
+#    - ChatOpenAI() creates connection to OpenAI's chat models
+#    - model parameter: which model to use (gpt-4o-mini, gpt-4, etc.)
+#    - temperature: controls randomness (0.0 = deterministic, 1.0 = creative)
+#    - Low temperature (0.2) = consistent, stable outputs
+
+# 2. PROMPT TEMPLATES
+#    - ChatPromptTemplate structures conversation with LLM
+#    - from_messages() creates template from list of (role, content) tuples
+#    - Roles: "system" (instructions), "user" (input), "assistant" (LLM response)
+#    - Variables in {curly braces} get replaced at runtime
+
+# 3. LCEL (LangChain Expression Language)
+#    - Pipe operator | chains components together
+#    - Format: prompt | llm | parser
+#    - Data flows left to right through the pipeline
+#    - Example: prompt formats input → llm processes → parser extracts text
+
+# 4. OUTPUT PARSERS
+#    - StrOutputParser() extracts string content from LLM response
+#    - LLM returns AIMessage object, parser gets the text
+#    - Without parser: AIMessage(content="text"), With parser: "text"
+#    - Makes response easier to work with
+
+# 5. CHAIN INVOCATION
+#    - .invoke({"key": "value"}) runs the chain with input data
+#    - Keys must match template variables: {transcript} needs {"transcript": "..."}
+#    - Returns parsed output (string if using StrOutputParser)
+#    - Chain handles prompt formatting, LLM call, and parsing automatically
+
+# 6. TEMPERATURE CONTROL
+#    - Lower (0.0-0.3): Predictable, follows rules strictly, consistent output
+#    - Medium (0.4-0.7): Balanced creativity and consistency
+#    - Higher (0.8-1.0): Creative, varied, more random
+#    - For structured outputs (like this assignment), use low temperature
